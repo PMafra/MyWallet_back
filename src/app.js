@@ -34,7 +34,7 @@ app.post('/sign-up', async (req, res) => {
 
         await connection.query(`
             INSERT INTO users
-            (name, email, password, online)
+            (name, email, password)
             VALUES ($1, $2, $3);
         `,[name, email, hashedPassword]);
 
@@ -76,7 +76,29 @@ app.post('/sign-in', async (req, res) => {
             VALUES ($1, $2)
         `, [user.id, token]);
 
-        res.status(200).send(token);
+        res.send(token);
+    } catch (err) {
+        console.log(err);
+        res.sendStatus(500);
+    }
+});
+
+app.post('/sign-out', async (req, res) => {
+
+    const { token } = req.body;
+
+    try {
+    
+        const logOut = await connection.query(`
+            DELETE FROM sessions
+            WHERE token = $1
+        `,[token]);
+
+        if(logOut.rowCount === 0) {
+            return res.status(404).send(`You have already been logged out!`);
+        }
+
+        res.send(200);
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
