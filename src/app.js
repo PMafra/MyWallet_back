@@ -85,7 +85,7 @@ app.post('/sign-in', async (req, res) => {
 
 app.post('/sign-out', async (req, res) => {
 
-    const { token } = req.body;
+    const token = req.headers['authorization']?.replace('Bearer ', '');
 
     try {
     
@@ -99,6 +99,65 @@ app.post('/sign-out', async (req, res) => {
         }
 
         res.send(200);
+    } catch (err) {
+        console.log(err);
+        res.sendStatus(500);
+    }
+});
+
+app.get('/records', async (req, res) => {
+
+    const token = req.headers['authorization']?.replace('Bearer ', '');
+
+    try {
+
+        if(!token) return res.status(401).send("You are not authorized to do this type of action");
+
+        const allRecords = await connection.query(`
+            SELECT records FROM records
+            JOIN sessions
+                ON sessions."userId" = records."userId"
+            WHERE token = $1;
+        `, [token]);
+
+        if(allRecords.rowCount === 0) {
+            return res.status(404).send(`User records have not been found!`);
+        }
+
+        res.send(allRecords.rows[0].allRecords);
+    } catch (err) {
+        console.log(err);
+        res.sendStatus(500);
+    }
+});
+
+app.post('/records', async (req, res) => {
+
+    const token = req.headers['authorization']?.replace('Bearer ', '');
+    const newRecordString = JSON.stringify(req.body);
+
+    try {
+
+        if(!token) return res.status(401).send("You are not authorized to do this type of action");
+
+        const userId = await connection.query(`
+            SELECT "userId" FROM sessions
+            WHERE token = $1;
+        `, [token]);
+
+        if(userId.rowCount === 0) {
+            return res.status(404).send(`User id have not been found!`);
+        }
+
+        await connection.query(`
+            UPDATE records
+            SET records = ${newRecordString}
+            WHERE "userId" = $1;
+        `, [userId]);
+
+        console.log(allRecords.rows[0].allRecords);
+
+        res.sendStatus(200);
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
