@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import Joi from "joi";
 import bcrypt from "bcrypt";
+import { v4 as uuid } from "uuid";
 
 import connection from "./database/database.js";
 
@@ -34,8 +35,8 @@ app.post('/sign-up', async (req, res) => {
         await connection.query(`
             INSERT INTO users
             (name, email, password, online)
-            VALUES ($1, $2, $3, $4);
-        `,[name, email, hashedPassword, false]);
+            VALUES ($1, $2, $3);
+        `,[name, email, hashedPassword]);
 
         res.sendStatus(201);
     } catch (err) {
@@ -68,7 +69,14 @@ app.post('/sign-in', async (req, res) => {
             return res.status(404).send(`The password is wrong!`);
         }
 
-        res.sendStatus(200);
+        const token = uuid();
+
+        await connection.query(`
+            INSERT INTO sessions ("userId", token)
+            VALUES ($1, $2)
+        `, [user.id, token]);
+
+        res.status(200).send(token);
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
