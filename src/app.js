@@ -25,7 +25,7 @@ app.post('/sign-up', async (req, res) => {
         `, [email]);
 
         if (isNewEmail.rowCount !== 0) {
-            return res.status(403).send(`${isNewEmail.rows[0].email} is already registered!`);
+            return res.status(403).send(`${email} is already registered!`);
         }
 
         await connection.query(`
@@ -41,11 +41,37 @@ app.post('/sign-up', async (req, res) => {
     }
 });
 
-app.get('/users', async (req, res) => {
+app.post('/sign-in', async (req, res) => {
+
+    const { 
+        email, 
+        password 
+    } = req.body;
 
     try {
-        res.send("ok");
+    
+        const isEmailRegistered = await connection.query(`
+            SELECT email FROM users
+            WHERE email = $1 
+        `,[email]);
+
+        if(isEmailRegistered.rowCount === 0) {
+            return res.status(404).send(`${email} is not registered!`);
+        }
+
+        const isPasswordCorrect = await connection.query(`
+            SELECT * FROM users
+            WHERE email = $1 
+            AND password = $2;
+        `,[email, password]);
+
+        if(isPasswordCorrect.rowCount === 0) {
+            return res.status(404).send(`The password is wrong!`);
+        }
+
+        res.sendStatus(200);
     } catch (err) {
+        console.log(err);
         res.sendStatus(500);
     }
 });
