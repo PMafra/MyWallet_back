@@ -3,6 +3,7 @@ import cors from "cors";
 import Joi from "joi";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
+import dayjs from "dayjs";
 
 import connection from "./database/database.js";
 
@@ -11,7 +12,38 @@ app.use(cors());
 app.use(express.json());
 const APP_PORT = 4000;
 
+const passwordRules = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/;
+const signUpSchema = Joi.object().length(3).keys({
+    name: Joi.string().alphanum().min(1).max(30).required(),
+    email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
+    password: Joi.string().pattern(passwordRules).required(),
+});
+
+const signInSchema = Joi.object().length(2).keys({
+    email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
+    password: Joi.string().pattern(passwordRules).required(),
+});
+
+const validateDate = (value, helper) => {
+    if (value !== dayjs(value).format("DD/MM")) {
+        return helper.message("Date must be in DD/MM format");
+    }
+    return true;
+}
+
+const newRecordSchema = Joi.object().length(4).keys({
+    date: Joi.string().custom((value, helper) => validateDate(value, helper)).required(),
+    description: Joi.string().min(1).max(300).required(),
+    value: Joi.number().invalid(0).required(),
+    isAddRecord: Joi.valid(true).valid(false).required()
+});
+
 app.post('/sign-up', async (req, res) => {
+
+    const isCorrectBody = signUpSchema.validate(req.body);
+    if (isCorrectBody.error) {
+        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0].message}`);
+    }
 
     const { 
         name, 
@@ -59,6 +91,11 @@ app.post('/sign-up', async (req, res) => {
 });
 
 app.post('/sign-in', async (req, res) => {
+
+    const isCorrectBody = signInSchema.validate(req.body);
+    if (isCorrectBody.error) {
+        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0].message}`);
+    }
 
     const { 
         email, 
@@ -151,6 +188,11 @@ app.post('/records', async (req, res) => {
     const token = req.headers['authorization']?.replace('Bearer ', '');
 
     if(!token) return res.status(401).send("You are not authorized to do this type of action");
+
+    const isCorrectBody = newRecordSchema.validate(req.body);
+    if (isCorrectBody.error) {
+        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0].message}`);
+    }
 
     const newRecord = req.body;
 
