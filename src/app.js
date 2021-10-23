@@ -38,6 +38,19 @@ app.post('/sign-up', async (req, res) => {
             VALUES ($1, $2, $3);
         `,[name, email, hashedPassword]);
 
+        const newUser = await connection.query(`
+            SELECT id FROM users
+            WHERE email = $1;
+        `,[email]);
+
+        const userId = newUser.rows[0].id;
+
+        await connection.query(`
+            INSERT INTO records
+            ("userId", records)
+            VALUES ($1, $2);
+        `,[userId, JSON.stringify([])]);
+
         res.sendStatus(201);
     } catch (err) {
         console.log(err);
@@ -109,9 +122,9 @@ app.get('/records', async (req, res) => {
 
     const token = req.headers['authorization']?.replace('Bearer ', '');
 
-    try {
+    if(!token) return res.status(401).send("You are not authorized to do this type of action");
 
-        if(!token) return res.status(401).send("You are not authorized to do this type of action");
+    try {
 
         const allRecords = await connection.query(`
             SELECT records FROM records
@@ -124,7 +137,9 @@ app.get('/records', async (req, res) => {
             return res.status(404).send(`User records have not been found!`);
         }
 
-        res.send(allRecords.rows[0].allRecords);
+        const allRecordsToSend = JSON.parse(allRecords.rows[0].records);
+
+        res.send(allRecordsToSend);
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
@@ -134,30 +149,39 @@ app.get('/records', async (req, res) => {
 app.post('/records', async (req, res) => {
 
     const token = req.headers['authorization']?.replace('Bearer ', '');
-    const newRecordString = JSON.stringify(req.body);
+
+    if(!token) return res.status(401).send("You are not authorized to do this type of action");
+
+    const newRecord = req.body;
 
     try {
 
-        if(!token) return res.status(401).send("You are not authorized to do this type of action");
-
-        const userId = await connection.query(`
-            SELECT "userId" FROM sessions
+        const recordsTable = await connection.query(`
+            SELECT * FROM records
+            JOIN sessions
+                ON sessions."userId" = records."userId"
             WHERE token = $1;
         `, [token]);
 
-        if(userId.rowCount === 0) {
+        if(recordsTable.rowCount === 0) {
             return res.status(404).send(`User id have not been found!`);
         }
 
+        const userId = recordsTable.rows[0].userId;
+        const previousRecords = JSON.parse(recordsTable.rows[0].records);
+
+        const updatedRecords = JSON.stringify([
+            ...previousRecords,
+            newRecord
+        ]);
+
         await connection.query(`
             UPDATE records
-            SET records = ${newRecordString}
+            SET records = '${updatedRecords}'
             WHERE "userId" = $1;
         `, [userId]);
 
-        console.log(allRecords.rows[0].allRecords);
-
-        res.sendStatus(200);
+        res.sendStatus(201);
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
