@@ -11,21 +11,23 @@ app.use(cors());
 app.use(express.json());
 const APP_PORT = 4000;
 
-const passwordRules = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/;
+const notAuthorized = "Você não está autorizado a realizar este tipo de ação.";
+const passwordRules = "A senha deve conter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula, um número e um caracter especial.";
+const passwordRegex = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/;
 const signUpSchema = Joi.object().length(3).keys({
     name: Joi.string().min(1).max(30).required(),
     email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
-    password: Joi.string().pattern(passwordRules).required(),
+    password: Joi.string().pattern(passwordRegex).required(),
 });
 
 const signInSchema = Joi.object().length(2).keys({
     email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
-    password: Joi.string().pattern(passwordRules).required(),
+    password: Joi.string().pattern(passwordRegex).required(),
 });
 
 const validateDate = (value, helper) => {
     if (value !== dayjs(value).format("DD/MM")) {
-        return helper.message("Date must be in DD/MM format");
+        return helper.message("A data deve estar no seguinte formato: DD/MM");
     }
     return true;
 }
@@ -41,10 +43,10 @@ app.post('/sign-up', async (req, res) => {
 
     const isCorrectBody = signUpSchema.validate(req.body);
     if (isCorrectBody.error) {
-        if (isCorrectBody.error.details[0].path[0] = "password") {
-            return res.status(400).send(`Bad Request: password must be at least 8 characters long with upper and lowercase letters, at least one number and one special character`);
+        if (isCorrectBody.error.details[0].path[0] === "password") {
+            return res.status(400).send(passwordRules);
         }
-        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0]}`);
+        return res.status(400).send(isCorrectBody.error.details[0].message);
     }
 
     const { 
@@ -61,7 +63,7 @@ app.post('/sign-up', async (req, res) => {
         `, [email]);
 
         if (isNewEmail.rowCount !== 0) {
-            return res.status(403).send(`${email} is already registered!`);
+            return res.status(403).send(`${email} já está registrado!`);
         }
 
         const hashedPassword = bcrypt.hashSync(password, 11);
@@ -96,7 +98,10 @@ app.post('/sign-in', async (req, res) => {
 
     const isCorrectBody = signInSchema.validate(req.body);
     if (isCorrectBody.error) {
-        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0].message}`);
+        if (isCorrectBody.error.details[0].path[0] = "password") {
+            return res.status(400).send(passwordRules);
+        }
+        return res.status(400).send(isCorrectBody.error.details[0].message);
     }
 
     const { 
@@ -112,14 +117,14 @@ app.post('/sign-in', async (req, res) => {
         `,[email]);
 
         if(usersTable.rowCount === 0) {
-            return res.status(404).send(`${email} is not registered!`);
+            return res.status(404).send(`${email} não está registrado!`);
         }
 
         const name = usersTable.rows[0].name;
         const user = usersTable.rows[0];
 
         if (!bcrypt.compareSync(password, user.password)) {
-            return res.status(404).send(`The password is wrong!`);
+            return res.status(404).send(`Sua senha está errada!`);
         }
 
         const token = uuid();
@@ -149,7 +154,7 @@ app.post('/sign-out', async (req, res) => {
         `,[token]);
 
         if(logOut.rowCount === 0) {
-            return res.status(404).send(`You have already been logged out!`);
+            return res.status(404).send(`Você já foi deslogado!`);
         }
 
         res.sendStatus(200);
@@ -163,7 +168,7 @@ app.get('/records', async (req, res) => {
 
     const token = req.headers['authorization']?.replace('Bearer ', '');
 
-    if(!token) return res.status(401).send("You are not authorized to do this type of action");
+    if(!token) return res.status(401).send(notAuthorized);
 
     try {
 
@@ -175,7 +180,7 @@ app.get('/records', async (req, res) => {
         `, [token]);
 
         if(allRecords.rowCount === 0) {
-            return res.status(404).send(`User records have not been found!`);
+            return res.status(404).send(`Seus registros de entradas e saídas não foram encontrados!`);
         }
 
         const allRecordsToSend = JSON.parse(allRecords.rows[0].records);
@@ -191,11 +196,11 @@ app.post('/records', async (req, res) => {
 
     const token = req.headers['authorization']?.replace('Bearer ', '');
 
-    if(!token) return res.status(401).send("You are not authorized to do this type of action");
+    if(!token) return res.status(401).send(notAuthorized);
 
     const isCorrectBody = newRecordSchema.validate(req.body);
     if (isCorrectBody.error) {
-        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0].message}`);
+        return res.status(400).send(isCorrectBody.error.details[0].message);
     }
 
     const newRecord = req.body;
@@ -210,7 +215,7 @@ app.post('/records', async (req, res) => {
         `, [token]);
 
         if(recordsTable.rowCount === 0) {
-            return res.status(404).send(`User id have not been found!`);
+            return res.status(404).send(`O seu id de usuário não foi encontrado!`);
         }
 
         const userId = recordsTable.rows[0].userId;
