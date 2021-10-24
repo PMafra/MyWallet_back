@@ -4,7 +4,6 @@ import Joi from "joi";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
 import dayjs from "dayjs";
-
 import connection from "./database/database.js";
 
 const app = express();
@@ -14,7 +13,7 @@ const APP_PORT = 4000;
 
 const passwordRules = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/;
 const signUpSchema = Joi.object().length(3).keys({
-    name: Joi.string().alphanum().min(1).max(30).required(),
+    name: Joi.string().min(1).max(30).required(),
     email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
     password: Joi.string().pattern(passwordRules).required(),
 });
@@ -30,9 +29,9 @@ const validateDate = (value, helper) => {
     }
     return true;
 }
-
+//.custom((value, helper) => validateDate(value, helper))
 const newRecordSchema = Joi.object().length(4).keys({
-    date: Joi.string().custom((value, helper) => validateDate(value, helper)).required(),
+    date: Joi.string().required(),
     description: Joi.string().min(1).max(300).required(),
     value: Joi.number().invalid(0).required(),
     isAddRecord: Joi.valid(true).valid(false).required()
@@ -42,7 +41,10 @@ app.post('/sign-up', async (req, res) => {
 
     const isCorrectBody = signUpSchema.validate(req.body);
     if (isCorrectBody.error) {
-        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0].message}`);
+        if (isCorrectBody.error.details[0].path[0] = "password") {
+            return res.status(400).send(`Bad Request: password must be at least 8 characters long with upper and lowercase letters, at least one number and one special character`);
+        }
+        return res.status(400).send(`Bad Request: ${isCorrectBody.error.details[0]}`);
     }
 
     const { 
@@ -104,16 +106,17 @@ app.post('/sign-in', async (req, res) => {
 
     try {
     
-        const isEmailRegistered = await connection.query(`
+        const usersTable = await connection.query(`
             SELECT * FROM users
             WHERE email = $1 
         `,[email]);
 
-        if(isEmailRegistered.rowCount === 0) {
+        if(usersTable.rowCount === 0) {
             return res.status(404).send(`${email} is not registered!`);
         }
 
-        const user = isEmailRegistered.rows[0];
+        const name = usersTable.rows[0].name;
+        const user = usersTable.rows[0];
 
         if (!bcrypt.compareSync(password, user.password)) {
             return res.status(404).send(`The password is wrong!`);
@@ -125,8 +128,9 @@ app.post('/sign-in', async (req, res) => {
             INSERT INTO sessions ("userId", token)
             VALUES ($1, $2)
         `, [user.id, token]);
+        
 
-        res.send(token);
+        res.send({token, name});
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
@@ -148,7 +152,7 @@ app.post('/sign-out', async (req, res) => {
             return res.status(404).send(`You have already been logged out!`);
         }
 
-        res.send(200);
+        res.sendStatus(200);
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
