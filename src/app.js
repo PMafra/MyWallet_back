@@ -14,6 +14,8 @@ const APP_PORT = 4000;
 const notAuthorized = "Você não está autorizado a realizar este tipo de ação.";
 const passwordRules = "A senha deve conter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula, um número e um caracter especial.";
 const passwordRegex = /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/;
+const dateRegex = /^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[012])$/;
+
 const signUpSchema = Joi.object().length(3).keys({
     name: Joi.string().min(1).max(30).required(),
     email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } }).required(),
@@ -25,17 +27,10 @@ const signInSchema = Joi.object().length(2).keys({
     password: Joi.string().pattern(passwordRegex).required(),
 });
 
-const validateDate = (value, helper) => {
-    if (value !== dayjs(value).format("DD/MM")) {
-        return helper.message("A data deve estar no seguinte formato: DD/MM");
-    }
-    return true;
-}
-//.custom((value, helper) => validateDate(value, helper))
 const newRecordSchema = Joi.object().length(4).keys({
-    date: Joi.string().required(),
+    date: Joi.string().pattern(dateRegex).required(),
     description: Joi.string().min(1).max(300).required(),
-    value: Joi.number().invalid(0).required(),
+    value: Joi.number().positive().invalid(0).required(),
     isAddRecord: Joi.valid(true).valid(false).required()
 });
 
@@ -56,7 +51,6 @@ app.post('/sign-up', async (req, res) => {
     } = req.body;
 
     try {
-
         const isNewEmail = await connection.query(`
             SELECT email FROM users
             WHERE email = $1;
@@ -110,7 +104,6 @@ app.post('/sign-in', async (req, res) => {
     } = req.body;
 
     try {
-    
         const usersTable = await connection.query(`
             SELECT * FROM users
             WHERE email = $1 
@@ -145,9 +138,9 @@ app.post('/sign-in', async (req, res) => {
 app.post('/sign-out', async (req, res) => {
 
     const token = req.headers['authorization']?.replace('Bearer ', '');
+    if(!token) return res.status(401).send(notAuthorized);
 
     try {
-    
         const logOut = await connection.query(`
             DELETE FROM sessions
             WHERE token = $1
@@ -167,11 +160,9 @@ app.post('/sign-out', async (req, res) => {
 app.get('/records', async (req, res) => {
 
     const token = req.headers['authorization']?.replace('Bearer ', '');
-
     if(!token) return res.status(401).send(notAuthorized);
 
     try {
-
         const allRecords = await connection.query(`
             SELECT records FROM records
             JOIN sessions
@@ -195,7 +186,6 @@ app.get('/records', async (req, res) => {
 app.post('/records', async (req, res) => {
 
     const token = req.headers['authorization']?.replace('Bearer ', '');
-
     if(!token) return res.status(401).send(notAuthorized);
 
     const isCorrectBody = newRecordSchema.validate(req.body);
@@ -206,7 +196,6 @@ app.post('/records', async (req, res) => {
     const newRecord = req.body;
 
     try {
-
         const recordsTable = await connection.query(`
             SELECT * FROM records
             JOIN sessions
@@ -215,7 +204,7 @@ app.post('/records', async (req, res) => {
         `, [token]);
 
         if(recordsTable.rowCount === 0) {
-            return res.status(404).send(`O seu id de usuário não foi encontrado!`);
+            return res.status(404).send(`O seu id de usuário não foi encontrado! Por favor, verifique se ainda está logado.`);
         }
 
         const userId = recordsTable.rows[0].userId;
