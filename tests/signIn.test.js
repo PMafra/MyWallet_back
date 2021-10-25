@@ -14,7 +14,7 @@ describe("POST /sign-in", () => {
     const password = 'Pedro123@';
     const hashPassword = bcrypt.hashSync(password, 11);
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         await connection.query(`
             INSERT INTO users
             (name, email, password)
@@ -22,7 +22,7 @@ describe("POST /sign-in", () => {
         `)
     })
 
-    afterAll(async () => {
+    afterEach(async () => {
         await connection.query(`
             DELETE FROM users
             WHERE email = '${randomEmail}';
