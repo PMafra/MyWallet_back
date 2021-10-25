@@ -9,20 +9,20 @@ afterAll(() => {
 
 describe("POST /sign-up", () => {
 
-    const ramdomEmail = `${uuid()}@email.com`;
+    const randomEmail = `${uuid()}@email.com`;
 
     beforeAll(async () => {
         await connection.query(`
             INSERT INTO users
             (name, email, password)
-            VALUES ('Pedro', '${ramdomEmail}', 'Pedro123@');
+            VALUES ('Pedro', '${randomEmail}', 'Pedro123@');
         `)
     })
 
     afterAll(async () => {
         await connection.query(`
             DELETE FROM users
-            WHERE email = '${ramdomEmail}';
+            WHERE email = '${randomEmail}';
         `)
     })
 
@@ -42,7 +42,7 @@ describe("POST /sign-up", () => {
         .post("/sign-up")
         .send({
             name: "PedroSegundo",
-            email: ramdomEmail,
+            email: randomEmail,
             password: "PedroSegundo123@"
         })
         expect(result.status).toEqual(409);
