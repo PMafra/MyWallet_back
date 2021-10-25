@@ -15,4 +15,4 @@ app.post('/sign-out', signOut);
 app.get('/records', listRecords);
 app.post('/records', sendRecord);
 
-app.listen(4000);
+export default app;
