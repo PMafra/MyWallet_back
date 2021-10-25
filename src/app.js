@@ -3,7 +3,6 @@ import cors from "cors";
 import Joi from "joi";
 import bcrypt from "bcrypt";
 import { v4 as uuid } from "uuid";
-import dayjs from "dayjs";
 import connection from "./database/database.js";
 
 const app = express();
@@ -34,6 +33,9 @@ const newRecordSchema = Joi.object().length(4).keys({
     isAddRecord: Joi.valid(true).valid(false).required()
 });
 
+const selectUser = 'SELECT * FROM users WHERE email = $1;'
+const selectUserRecords = 'SELECT * FROM records JOIN sessions ON sessions."userId" = records."userId" WHERE token = $1;';
+
 app.post('/sign-up', async (req, res) => {
 
     const isCorrectBody = signUpSchema.validate(req.body);
@@ -51,28 +53,19 @@ app.post('/sign-up', async (req, res) => {
     } = req.body;
 
     try {
-        const isNewEmail = await connection.query(`
-            SELECT email FROM users
-            WHERE email = $1;
-        `, [email]);
-
-        if (isNewEmail.rowCount !== 0) {
-            return res.status(403).send(`${email} já está registrado!`);
+        const isEmailAlreadyRegistered = await connection.query(selectUser, [email]);
+        if (isEmailAlreadyRegistered.rowCount !== 0) {
+            return res.status(409).send(`${email} já está registrado!`);
         }
 
         const hashedPassword = bcrypt.hashSync(password, 11);
-
         await connection.query(`
             INSERT INTO users
             (name, email, password)
             VALUES ($1, $2, $3);
         `,[name, email, hashedPassword]);
 
-        const newUser = await connection.query(`
-            SELECT id FROM users
-            WHERE email = $1;
-        `,[email]);
-
+        const newUser = await connection.query(selectUser,[email]);
         const userId = newUser.rows[0].id;
 
         await connection.query(`
@@ -92,7 +85,7 @@ app.post('/sign-in', async (req, res) => {
 
     const isCorrectBody = signInSchema.validate(req.body);
     if (isCorrectBody.error) {
-        if (isCorrectBody.error.details[0].path[0] = "password") {
+        if (isCorrectBody.error.details[0].path[0] === "password") {
             return res.status(400).send(passwordRules);
         }
         return res.status(400).send(isCorrectBody.error.details[0].message);
@@ -100,23 +93,23 @@ app.post('/sign-in', async (req, res) => {
 
     const { 
         email, 
-        password 
+        password: receivedPassword
     } = req.body;
 
     try {
-        const usersTable = await connection.query(`
-            SELECT * FROM users
-            WHERE email = $1 
-        `,[email]);
+        const usersTable = await connection.query(selectUser,[email]);
 
         if(usersTable.rowCount === 0) {
             return res.status(404).send(`${email} não está registrado!`);
         }
 
-        const name = usersTable.rows[0].name;
-        const user = usersTable.rows[0];
+        const {
+            password,
+            name,
+            id: userId
+        } = usersTable.rows[0];
 
-        if (!bcrypt.compareSync(password, user.password)) {
+        if (!bcrypt.compareSync(receivedPassword, password)) {
             return res.status(404).send(`Sua senha está errada!`);
         }
 
@@ -125,9 +118,8 @@ app.post('/sign-in', async (req, res) => {
         await connection.query(`
             INSERT INTO sessions ("userId", token)
             VALUES ($1, $2)
-        `, [user.id, token]);
+        `, [userId, token]);
         
-
         res.send({token, name});
     } catch (err) {
         console.log(err);
@@ -147,7 +139,7 @@ app.post('/sign-out', async (req, res) => {
         `,[token]);
 
         if(logOut.rowCount === 0) {
-            return res.status(404).send(`Você já foi deslogado!`);
+            return res.status(404).send(`Esta sessão não existe ou já foi terminada!`);
         }
 
         res.sendStatus(200);
@@ -163,19 +155,13 @@ app.get('/records', async (req, res) => {
     if(!token) return res.status(401).send(notAuthorized);
 
     try {
-        const allRecords = await connection.query(`
-            SELECT records FROM records
-            JOIN sessions
-                ON sessions."userId" = records."userId"
-            WHERE token = $1;
-        `, [token]);
+        const allRecords = await connection.query(selectUserRecords, [token]);
 
         if(allRecords.rowCount === 0) {
-            return res.status(404).send(`Seus registros de entradas e saídas não foram encontrados!`);
+            return res.status(404).send(`Seus registros de entradas e saídas não foram encontrados! Sua sessão provavelmente foi terminada.`);
         }
 
         const allRecordsToSend = JSON.parse(allRecords.rows[0].records);
-
         res.send(allRecordsToSend);
     } catch (err) {
         console.log(err);
@@ -196,19 +182,18 @@ app.post('/records', async (req, res) => {
     const newRecord = req.body;
 
     try {
-        const recordsTable = await connection.query(`
-            SELECT * FROM records
-            JOIN sessions
-                ON sessions."userId" = records."userId"
-            WHERE token = $1;
-        `, [token]);
+        const recordsTable = await connection.query(selectUserRecords, [token]);
 
         if(recordsTable.rowCount === 0) {
-            return res.status(404).send(`O seu id de usuário não foi encontrado! Por favor, verifique se ainda está logado.`);
+            return res.status(404).send(`O seu id de usuário não foi encontrado! Por favor, verifique se sua sessão foi terminada.`);
         }
 
-        const userId = recordsTable.rows[0].userId;
-        const previousRecords = JSON.parse(recordsTable.rows[0].records);
+        const {
+            userId,
+            records
+        } = recordsTable.rows[0];
+
+        const previousRecords = JSON.parse(records);
 
         const updatedRecords = JSON.stringify([
             ...previousRecords,
