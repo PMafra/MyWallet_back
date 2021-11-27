@@ -1,69 +1,70 @@
-import connection from "../database/database.js";
-import { newRecordSchema } from "../validations/bodyValidations.js";
+/* eslint-disable no-console */
+import connection from '../database/database.js';
+import { newRecordSchema } from '../validations/bodyValidations.js';
 
-const notAuthorized = "Você não está autorizado a realizar este tipo de ação."
+const notAuthorized = 'Você não está autorizado a realizar este tipo de ação.';
 const selectUserRecords = 'SELECT * FROM records JOIN sessions ON sessions."userId" = records."userId" WHERE token = $1;';
 
-async function listRecords (req, res) {
-    const token = req.headers['authorization']?.replace('Bearer ', '');
-    if(!token) return res.status(401).send(notAuthorized);
+async function listRecords(req, res) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).send(notAuthorized);
 
-    try {
-        const allRecords = await connection.query(selectUserRecords, [token]);
+  try {
+    const allRecords = await connection.query(selectUserRecords, [token]);
 
-        if(allRecords.rowCount === 0) {
-            return res.status(404).send(`Seus registros de entradas e saídas não foram encontrados! Sua sessão provavelmente foi terminada.`);
-        }
-
-        const allRecordsToSend = JSON.parse(allRecords.rows[0].records);
-        res.send(allRecordsToSend);
-    } catch (err) {
-        console.log(err);
-        res.sendStatus(500);
+    if (allRecords.rowCount === 0) {
+      return res.status(404).send('Seus registros de entradas e saídas não foram encontrados! Sua sessão provavelmente foi terminada.');
     }
+
+    const allRecordsToSend = JSON.parse(allRecords.rows[0].records);
+    return res.send(allRecordsToSend);
+  } catch (err) {
+    console.log(err);
+    return res.sendStatus(500);
+  }
 }
 
-async function sendRecord (req, res) {
-    const token = req.headers['authorization']?.replace('Bearer ', '');
-    if(!token) return res.status(401).send(notAuthorized);
+async function sendRecord(req, res) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).send(notAuthorized);
 
-    const isCorrectBody = newRecordSchema.validate(req.body);
-    if (isCorrectBody.error) {
-        return res.status(400).send(isCorrectBody.error.details[0].message);
+  const isCorrectBody = newRecordSchema.validate(req.body);
+  if (isCorrectBody.error) {
+    return res.status(400).send(isCorrectBody.error.details[0].message);
+  }
+
+  const newRecord = req.body;
+
+  try {
+    const recordsTable = await connection.query(selectUserRecords, [token]);
+
+    if (recordsTable.rowCount === 0) {
+      return res.status(404).send('O seu id de usuário não foi encontrado! Por favor, verifique se sua sessão foi terminada.');
     }
 
-    const newRecord = req.body;
+    const {
+      userId,
+      records,
+    } = recordsTable.rows[0];
 
-    try {
-        const recordsTable = await connection.query(selectUserRecords, [token]);
+    const previousRecords = JSON.parse(records);
 
-        if(recordsTable.rowCount === 0) {
-            return res.status(404).send(`O seu id de usuário não foi encontrado! Por favor, verifique se sua sessão foi terminada.`);
-        }
+    const updatedRecords = JSON.stringify([
+      ...previousRecords,
+      newRecord,
+    ]);
 
-        const {
-            userId,
-            records
-        } = recordsTable.rows[0];
-
-        const previousRecords = JSON.parse(records);
-
-        const updatedRecords = JSON.stringify([
-            ...previousRecords,
-            newRecord
-        ]);
-
-        await connection.query(`
+    await connection.query(`
             UPDATE records
             SET records = '${updatedRecords}'
             WHERE "userId" = $1;
         `, [userId]);
 
-        res.sendStatus(201);
-    } catch (err) {
-        console.log(err);
-        res.sendStatus(500);
-    }
+    return res.sendStatus(201);
+  } catch (err) {
+    console.log(err);
+    return res.sendStatus(500);
+  }
 }
 
 export { listRecords, sendRecord };

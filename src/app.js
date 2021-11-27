@@ -1,9 +1,9 @@
-import express from "express";
-import cors from "cors";
-import signUp from "./controllers/sign-up.js";
-import signIn from "./controllers/sign-in.js";
-import signOut from "./controllers/sign-out.js";
-import { listRecords, sendRecord } from "./controllers/records.js";
+import express from 'express';
+import cors from 'cors';
+import signUp from './controllers/sign-up.js';
+import signIn from './controllers/sign-in.js';
+import signOut from './controllers/sign-out.js';
+import { listRecords, sendRecord } from './controllers/records.js';
 
 const app = express();
 app.use(cors());
