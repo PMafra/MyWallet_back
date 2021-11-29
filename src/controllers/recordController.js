@@ -4,14 +4,13 @@ import * as recordService from '../services/recordService.js';
 import { newRecordSchema } from '../validations/bodyValidations.js';
 
 async function listRecords(req, res) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.sendStatus(401);
+  const { token } = res.locals;
 
   try {
     const allRecords = await recordService.requireRecords({ token });
 
     if (!allRecords) {
-      return res.status(404).send('Seus registros de entradas e saídas não foram encontrados! Sua sessão provavelmente foi terminada.');
+      return res.status(401).send('Seus registros de entradas e saídas não foram encontrados! Sua sessão provavelmente foi terminada.');
     }
 
     const allRecordsToSend = JSON.parse(allRecords);
@@ -23,8 +22,7 @@ async function listRecords(req, res) {
 }
 
 async function sendRecord(req, res) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.sendStatus(401);
+  const { token } = res.locals;
 
   const isCorrectBody = newRecordSchema.validate(req.body);
   if (isCorrectBody.error) {
@@ -37,7 +35,7 @@ async function sendRecord(req, res) {
     const updateRecords = await recordService.addNewRecord({ token, newRecord });
 
     if (!updateRecords) {
-      return res.status(404).send('O seu id de usuário não foi encontrado! Por favor, verifique se sua sessão foi terminada.');
+      return res.status(401).send('O seu id de usuário não foi encontrado! Por favor, verifique se sua sessão foi terminada.');
     }
 
     return res.sendStatus(201);
