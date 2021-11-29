@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
-/* eslint-disable import/prefer-default-export */
 import * as userService from '../services/userService.js';
-import { signUpSchema } from '../validations/bodyValidations.js';
+import { signUpSchema, signInSchema } from '../validations/bodyValidations.js';
 
 const passwordRules = 'A senha deve conter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula, um número e um caracter especial.';
 
@@ -30,6 +29,35 @@ async function signUp(req, res) {
   }
 }
 
+async function signIn(req, res) {
+  const isCorrectBody = signInSchema.validate(req.body);
+  if (isCorrectBody.error) {
+    if (isCorrectBody.error.details[0].path[0] === 'password') {
+      return res.status(400).send(passwordRules);
+    }
+    return res.status(400).send(isCorrectBody.error.details[0].message);
+  }
+
+  const { email, password } = req.body;
+
+  try {
+    const user = await userService.createUserSession({ email, password });
+
+    if (!user?.token) {
+      return res.status(401).send('Email ou senha incorretos!');
+    }
+
+    return res.send({
+      token: user.token,
+      name: user.name,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.sendStatus(500);
+  }
+}
+
 export {
   signUp,
+  signIn,
 };
