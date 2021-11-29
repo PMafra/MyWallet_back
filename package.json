@@ -5,7 +5,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "NODE_ENV=test npx jest --watchAll",
+    "start": "node src/server.js",
+    "start:dev": "NODE_ENV=dev npx nodemon src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -17,19 +19,20 @@
     "express": "^4.17.1",
     "joi": "^17.4.2",
     "pg": "^8.7.1",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "dotenv": "^10.0.0"
   },
   "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.15.8",
+    "@babel/preset-env": "^7.15.8",
+    "babel-jest": "^27.3.1",
     "eslint": "^8.3.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "8.3.0",
     "eslint-plugin-import": "^2.25.3",
     "husky": "7.0.4",
-    "prettier": "2.5.0",
     "jest": "^27.3.1",
-    "supertest": "^6.1.6",
-    "@babel/plugin-transform-runtime": "^7.15.8",
-    "@babel/preset-env": "^7.15.8",
-    "babel-jest": "^27.3.1"
+    "prettier": "2.5.0",
+    "supertest": "^6.1.6"
   }
 }
