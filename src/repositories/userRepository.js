@@ -27,8 +27,18 @@ async function createSession({ userId, token }) {
   return result;
 }
 
+async function deleteSession({ token }) {
+  const result = await connection.query(
+    'DELETE FROM sessions WHERE token = $1',
+    [token],
+  );
+
+  return result.rowCount;
+}
+
 export {
   createUser,
   selectUser,
   createSession,
+  deleteSession,
 };

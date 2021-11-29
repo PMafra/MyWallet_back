@@ -33,7 +33,19 @@ async function createUserSession({ email, password }) {
     token, name: user.name,
   };
 }
+
+async function terminateSession({ token }) {
+  const logOut = await userRepository.deleteSession({ token });
+
+  if (logOut === 0) {
+    return null;
+  }
+
+  return true;
+}
+
 export {
   createUser,
   createUserSession,
+  terminateSession,
 };
