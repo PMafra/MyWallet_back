@@ -18,7 +18,7 @@ CREATE TABLE "sessions" (
 CREATE TABLE "records" (
 	"id" serial NOT NULL,
 	"userId" integer NOT NULL,
-	"records" TEXT NOT NULL,
+	"records" TEXT,
 	CONSTRAINT "records_pk" PRIMARY KEY ("id")
 ) WITH (
   OIDS=FALSE
