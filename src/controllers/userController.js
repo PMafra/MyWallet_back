@@ -44,7 +44,7 @@ async function signIn(req, res) {
     const user = await userService.createUserSession({ email, password });
 
     if (!user?.token) {
-      return res.status(401).send('Email ou senha incorretos!');
+      return res.status(404).send('Email ou senha incorretos!');
     }
 
     return res.send({

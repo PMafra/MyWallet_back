@@ -1,3 +1,4 @@
+import '../../src/setup.js';
 import supertest from 'supertest';
 import { v4 as uuid } from 'uuid';
 import app from '../../src/app.js';
@@ -12,11 +13,6 @@ describe('POST /records', () => {
   const token = uuid();
 
   beforeAll(async () => {
-    await connection.query(`
-            INSERT INTO sessions
-            ("userId", token)
-            VALUES (${userId}, '${token}');
-        `);
     await connection.query(`
             INSERT INTO records
             ("userId", records)

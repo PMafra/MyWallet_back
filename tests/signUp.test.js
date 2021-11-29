@@ -1,3 +1,4 @@
+import '../src/setup.js';
 import supertest from 'supertest';
 import { v4 as uuid } from 'uuid';
 import app from '../src/app.js';
