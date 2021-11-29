@@ -8,12 +8,12 @@ async function createRecord({ userId, recordsList }) {
   return result;
 }
 
-async function selectRecords({ userId }) {
+async function selectRecords({ token }) {
   const result = await connection.query(
-    'SELECT * FROM "records" WHERE "userId"=$1 ORDER BY "id" DESC',
-    [userId],
+    'SELECT * FROM records JOIN sessions ON sessions."userId" = records."userId" WHERE token = $1;',
+    [token],
   );
-  return result;
+  return result.rows[0];
 }
 
 export {
