@@ -58,15 +58,14 @@ async function signIn(req, res) {
 }
 
 async function signOut(req, res) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.sendStatus(401);
+  const { token } = res.locals;
 
   try {
     const logOut = await userService.terminateSession({ token });
     console.log(logOut);
 
     if (!logOut) {
-      return res.status(404).send('Esta sessão não existe ou já foi terminada!');
+      return res.status(401).send('Esta sessão não existe ou já foi terminada!');
     }
 
     return res.sendStatus(200);
