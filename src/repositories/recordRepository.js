@@ -16,7 +16,16 @@ async function selectRecords({ token }) {
   return result.rows[0];
 }
 
+async function updateRecords({ updatedRecords, userId }) {
+  const result = await connection.query(
+    'UPDATE records SET records = $1 WHERE "userId" = $2;',
+    [updatedRecords, userId],
+  );
+  return result.rows[0];
+}
+
 export {
   createRecord,
   selectRecords,
+  updateRecords,
 };

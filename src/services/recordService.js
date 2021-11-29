@@ -10,13 +10,27 @@ async function requireRecords({ token }) {
   return recordsObject.records;
 }
 
-async function addRecord({ userId, value, type }) {
-  await recordRepository.createRecord({ userId, value, type });
+async function addNewRecord({ token, newRecord }) {
+  const allRecords = await recordRepository.selectRecords({ token });
+
+  if (!allRecords) {
+    return null;
+  }
+
+  const { userId, records } = allRecords;
+
+  const previousRecords = JSON.parse(records);
+  const updatedRecords = JSON.stringify([
+    ...previousRecords,
+    newRecord,
+  ]);
+
+  await recordRepository.updateRecords({ updatedRecords, userId });
 
   return true;
 }
 
 export {
   requireRecords,
-  addRecord,
+  addNewRecord,
 };
