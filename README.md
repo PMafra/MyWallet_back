@@ -50,11 +50,13 @@ npm install
 ```
 6. Follow instructions to fully run front-end at https://github.com/PMafra/MyWallet_front
 
+7. Create .env.dev and .env.test files based on .env.example file
+
 7. Display the back-end scripts with
 ```bash
 npx ntl
 ```
 8. Choose one of the three options to run back-end:
-* **test** - test environment
-* **start** - production environment
-* **start:dev** - development environment
+* **test** - for test environment
+* **start** - for production environment
+* **start:dev** - for development environment
