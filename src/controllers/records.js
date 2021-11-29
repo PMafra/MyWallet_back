@@ -2,12 +2,11 @@
 import connection from '../database/database.js';
 import { newRecordSchema } from '../validations/bodyValidations.js';
 
-const notAuthorized = 'Você não está autorizado a realizar este tipo de ação.';
 const selectUserRecords = 'SELECT * FROM records JOIN sessions ON sessions."userId" = records."userId" WHERE token = $1;';
 
 async function listRecords(req, res) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).send(notAuthorized);
+  if (!token) return res.sendStatus(401);
 
   try {
     const allRecords = await connection.query(selectUserRecords, [token]);
@@ -26,7 +25,7 @@ async function listRecords(req, res) {
 
 async function sendRecord(req, res) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).send(notAuthorized);
+  if (!token) return res.sendStatus(401);
 
   const isCorrectBody = newRecordSchema.validate(req.body);
   if (isCorrectBody.error) {

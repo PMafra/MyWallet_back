@@ -3,7 +3,7 @@ import connection from '../database/database.js';
 
 async function signOut(req, res) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).send('Você não está autorizado a realizar este tipo de ação.');
+  if (!token) return res.sendStatus(401);
 
   try {
     const logOut = await connection.query(`
